@@ -150,17 +150,29 @@ def AddDevice(self, adapter_device_name, device_address, alias):
             name=BLUEZ_MOCK_IFACE + '.NoSuchAdapter')
 
     properties = {
-        'UUIDs': dbus.Array([], signature='s', variant_level=1),
-        'Blocked': dbus.Boolean(False, variant_level=1),
-        'Connected': dbus.Boolean(False, variant_level=1),
-        'LegacyPairing': dbus.Boolean(False, variant_level=1),
-        'Paired': dbus.Boolean(False, variant_level=1),
-        'Trusted': dbus.Boolean(False, variant_level=1),
-        'RSSI': dbus.Int16(-79, variant_level=1),  # arbitrary
-        'Adapter': dbus.ObjectPath(adapter_path, variant_level=1),
         'Address': dbus.String(device_address, variant_level=1),
-        'Alias': dbus.String(alias, variant_level=1),
         'Name': dbus.String(alias, variant_level=1),
+        'Icon': dbus.String('xx', variant_level=1),
+        'Class': dbus.UInt32(33, variant_level=1),
+        'Appearance': dbus.Int16(0x0200, variant_level=1),
+        'UUIDs': dbus.Array(['00001800-0000-1000-8000-00805f9b34fb',
+                             '00001801-0000-1000-8000-00805f9b34fb',
+                             '0000180a-0000-1000-8000-00805f9b34fb'],
+                            variant_level=1),
+        'Paired': dbus.Boolean(False, variant_level=1),
+        'Connected': dbus.Boolean(False, variant_level=1),
+        'Trusted': dbus.Boolean(False, variant_level=1),
+        'Blocked': dbus.Boolean(False, variant_level=1),
+        'Alias': dbus.String(alias, variant_level=1),
+        'Adapter': dbus.ObjectPath(adapter_path, variant_level=1),
+        'LegacyPairing': dbus.Boolean(False, variant_level=1),
+        'Modalias': dbus.String('', variant_level=1),
+        'RSSI': dbus.Int16(-79, variant_level=1),  # arbitrary
+        'TxPower': dbus.Int16(0, variant_level=1),
+        'ManufacturerData': dbus.Array({'': []}, variant_level=1),
+        'ServiceData': dbus.Array({'': []}, variant_level=1),
+        'ServicesResolved': dbus.Boolean(False, variant_level=1),
+        # 'AdvertisingFlags': dbus.Array([], variant_level=1)
     }
 
     self.AddObject(path,
