@@ -36,6 +36,7 @@ ADAPTER_IFACE = 'org.bluez.Adapter1'
 MEDIA_IFACE = 'org.bluez.Media1'
 NETWORK_SERVER_IFACE = 'org.bluez.Network1'
 DEVICE_IFACE = 'org.bluez.Device1'
+SERVICE_IFACE = 'org.bluez.GattService1'
 
 
 def load(mock, parameters):
@@ -181,6 +182,54 @@ def AddDevice(self, adapter_device_name, device_address, alias):
                        'oa{sa{sv}}', [
                            dbus.ObjectPath(path),
                            {DEVICE_IFACE: properties},
+                       ])
+
+    return path
+
+
+
+@dbus.service.method(BLUEZ_MOCK_IFACE,
+                     in_signature='sss', out_signature='s')
+def AddGATT(self, adapter_device_name, device_address, alias):
+    '''Convenience method to add a Bluetooth device
+
+    You have to specify a device address which must be a valid Bluetooth
+    address (e.g. 'AA:BB:CC:DD:EE:FF'). The alias is the human-readable name
+    for the device (e.g. as set on the device itself), and the adapter device
+    name is the device_name passed to AddAdapter.
+
+    This will create a new, unpaired and unconnected device.
+
+    Returns the new object path.
+    '''
+    device_name = 'dev_' + device_address.replace(':', '_').upper()
+    adapter_path = '/org/bluez/' + adapter_device_name
+    device_path = adapter_path + '/' + device_name
+    path = device_path + '/service0001'
+
+    if device_path not in mockobject.objects:
+        raise dbus.exceptions.DBusException(
+            'Device %s does not exist.' % device_address,
+            name=BLUEZ_MOCK_IFACE + '.NoSuchDevice')
+
+    properties = {
+        'UUID': dbus.String('180F', variant_level=1),
+        'Primary': dbus.Boolean(True, variant_level=1),
+        'Device': dbus.ObjectPath(device_path, variant_level=1),
+    }
+
+    self.AddObject(path,
+                   SERVICE_IFACE,
+                   # Properties
+                   properties,
+                   # Methods
+                   [('','','',''),])
+
+    manager = mockobject.objects['/']
+    manager.EmitSignal(OBJECT_MANAGER_IFACE, 'InterfacesAdded',
+                       'oa{sa{sv}}', [
+                           dbus.ObjectPath(path),
+                           {SERVICE_IFACE: properties},
                        ])
 
     return path
