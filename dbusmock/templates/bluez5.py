@@ -37,6 +37,7 @@ MEDIA_IFACE = 'org.bluez.Media1'
 NETWORK_SERVER_IFACE = 'org.bluez.Network1'
 DEVICE_IFACE = 'org.bluez.Device1'
 SERVICE_IFACE = 'org.bluez.GattService1'
+CHAR_IFACE = 'org.bluez.GattCharacteristic1'
 
 
 def load(mock, parameters):
@@ -201,33 +202,30 @@ def AddDevice(self, adapter_device_name, device_address, alias):
 
 
 @dbus.service.method(BLUEZ_MOCK_IFACE,
-                     in_signature='sss', out_signature='s')
-def AddGATT(self, adapter_device_name, device_address, alias):
-    '''Convenience method to add a Bluetooth device
+                     in_signature='snsb', out_signature='s')
+def AddGATTService(self, device_path, service_num, uuid, primary):
+    '''Convenience method to add a remote GATT service.
 
-    You have to specify a device address which must be a valid Bluetooth
-    address (e.g. 'AA:BB:CC:DD:EE:FF'). The alias is the human-readable name
-    for the device (e.g. as set on the device itself), and the adapter device
-    name is the device_name passed to AddAdapter.
+    The service is added on a DBus path that is relative to the device path of
+    the mock remote device.
 
-    This will create a new, unpaired and unconnected device.
+    This will create a GATT Service with the service_num (integer) and uuid
+    (string) specified, device corresponding to the device address and primary
+    flag as passed.
 
     Returns the new object path.
     '''
-    device_name = 'dev_' + device_address.replace(':', '_').upper()
-    adapter_path = '/org/bluez/' + adapter_device_name
-    device_path = adapter_path + '/' + device_name
-    path = device_path + '/service0001'
+    path = device_path + '/service{:04d}'.format(service_num)
 
     if device_path not in mockobject.objects:
         raise dbus.exceptions.DBusException(
-            'Device %s does not exist.' % device_address,
+            'Device path %s does not exist.' % device_path,
             name=BLUEZ_MOCK_IFACE + '.NoSuchDevice')
 
     properties = {
-        'UUID': dbus.String('180F', variant_level=1),
-        'Primary': dbus.Boolean(True, variant_level=1),
-        'Device': dbus.ObjectPath(device_path, variant_level=1),
+        'UUID': dbus.String(uuid, variant_level=1),
+        'Primary': dbus.Boolean(primary, variant_level=1),
+        'Device': dbus.ObjectPath(device_path, variant_level=1)
     }
 
     self.AddObject(path,
@@ -235,7 +233,7 @@ def AddGATT(self, adapter_device_name, device_address, alias):
                    # Properties
                    properties,
                    # Methods
-                   [('','','',''),])
+                   [('', '', '', ''), ])
 
     manager = mockobject.objects['/']
     manager.EmitSignal(OBJECT_MANAGER_IFACE, 'InterfacesAdded',
@@ -246,6 +244,53 @@ def AddGATT(self, adapter_device_name, device_address, alias):
 
     return path
 
+@dbus.service.method(BLUEZ_MOCK_IFACE,
+                     in_signature='sisasib', out_signature='s')
+def AddGATTCharacteristic(self, service_path, num, uuid, flags, value,
+                          notifying):
+    '''Convenience method to add a remote GATT characteristic.
+
+    The characteristic is added on a DBus path that is relative to the service
+    path of the corresponding mock parent service.
+
+    This will create a GATT Characteristic with the num (integer) and uuid
+    (string) specified, flags, value and notifying boolean.
+
+    Returns the new object path.
+    '''
+    path = service_path + '/char{:04d}'.format(num)
+
+    if service_path not in mockobject.objects:
+        raise dbus.exceptions.DBusException(
+            'Service path %s does not exist.' % service_path,
+            name=BLUEZ_MOCK_IFACE + '.NoSuchService')
+
+    properties = {
+        'Service': dbus.String(service_path, variant_level=1),
+        'UUID': dbus.String(uuid, variant_level=1),
+        'Value': dbus.Array([value], variant_level=1),
+        'Flags': dbus.Array(flags, variant_level=1),
+        'Notifying': dbus.Boolean(notifying, variant_level=1)
+    }
+
+    self.AddObject(path,
+                   CHAR_IFACE,
+                   # Properties
+                   properties,
+                   # Methods
+                   [('ReadValue', '', 'ay', 'ret = %s' % dbus.Array([value])),
+                    ('WriteValue', '', '', ''),
+                    ('StartNotify', '', '', ''),
+                    ('StopNotify', '', '', '')])
+
+    manager = mockobject.objects['/']
+    manager.EmitSignal(OBJECT_MANAGER_IFACE, 'InterfacesAdded',
+                       'oa{sa{sv}}', [
+                           dbus.ObjectPath(path),
+                           {CHAR_IFACE: properties},
+                       ])
+
+    return path
 
 @dbus.service.method(BLUEZ_MOCK_IFACE,
                      in_signature='ss', out_signature='')
