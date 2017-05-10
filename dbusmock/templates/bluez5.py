@@ -259,6 +259,7 @@ def AddGATTCharacteristic(self, service_path, num, uuid, flags, value,
     Returns the new object path.
     '''
     path = service_path + '/char{:04d}'.format(num)
+    self.value = value
 
     if service_path not in mockobject.objects:
         raise dbus.exceptions.DBusException(
@@ -268,7 +269,7 @@ def AddGATTCharacteristic(self, service_path, num, uuid, flags, value,
     properties = {
         'Service': dbus.String(service_path, variant_level=1),
         'UUID': dbus.String(uuid, variant_level=1),
-        'Value': dbus.Array([value], variant_level=1),
+        'Value': dbus.Array([self.value], variant_level=1),
         'Flags': dbus.Array(flags, variant_level=1),
         'Notifying': dbus.Boolean(notifying, variant_level=1)
     }
@@ -278,8 +279,8 @@ def AddGATTCharacteristic(self, service_path, num, uuid, flags, value,
                    # Properties
                    properties,
                    # Methods
-                   [('ReadValue', '', 'ay', 'ret = %s' % dbus.Array([value])),
-                    ('WriteValue', '', '', ''),
+                   [('ReadValue', '', 'ay', 'ret = getattr(self, "value", %s) ' % dbus.Array([self.value])),
+                    ('WriteValue', 'ay', 'b', 'self.value = list(args[0])\nret = True'),
                     ('StartNotify', '', '', ''),
                     ('StopNotify', '', '', '')])
 
